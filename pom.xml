@@ -1,0 +1,662 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.backbase.flow.onboarding.batatas</groupId>
+    <artifactId>batatas-flow-be</artifactId>
+    <version>0.15.14-SNAPSHOT</version>
+
+    <packaging>jar</packaging>
+
+    <name>batatas SME Onboarding BE</name>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <java.version>11</java.version>
+        <maven.compiler.source>${java.version}</maven.compiler.source>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
+
+        <!-- Docker -->
+        <!--suppress UnresolvedMavenProperty -->
+        <docker.repo.url>${DOCKER_REPO_URL}</docker.repo.url>
+        <docker.image.name>${docker.repo.url}/${project.artifactId}</docker.image.name>
+        <jib.to.image>${docker.image.name}:${project.version}</jib.to.image>
+
+        <!-- Sonar -->
+        <!--suppress UnresolvedMavenProperty -->
+        <sonar.projectKey>${SONAR_PROJECT_KEY}</sonar.projectKey>
+        <!--suppress UnresolvedMavenProperty -->
+        <sonar.organization>${SONAR_ORGANIZATION}</sonar.organization>
+        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+        <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <coverage.reports.dir>${project.build.directory}/coverage-reports</coverage.reports.dir>
+        <sonar.coverage.jacoco.xmlReportPaths>target/site/jacoco-ut/jacoco.xml,target/site/jacoco-it/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <sonar.sources>src/main/java,pom.xml</sonar.sources>
+        <sonar.java.binaries>target/classes/</sonar.java.binaries>
+        <skipITs>false</skipITs>
+
+        <!-- BackBase products versions -->
+        <backbase-flow-platforms-dependencies.version>1.4.1</backbase-flow-platforms-dependencies.version>
+        <journey-catalog-release-bom.version>0.6.0</journey-catalog-release-bom.version>
+        <identity-integration-spec.version>1.0.53</identity-integration-spec.version>
+
+        <!-- Maven plugins versions -->
+        <jacoco-maven-plugin.version>0.8.6</jacoco-maven-plugin.version>
+        <jsonschema2pojo.version>1.0.2</jsonschema2pojo.version>
+        <gitflow-maven-plugin.version>1.15.1</gitflow-maven-plugin.version>
+        <sql-maven-plugin.version>1.5</sql-maven-plugin.version>
+        <jib-maven-plugin.version>2.8.0</jib-maven-plugin.version>
+        <maven-release-plugin.version>3.0.0-M1</maven-release-plugin.version>
+        <maven-enforcer-plugin.version>3.0.0-M3</maven-enforcer-plugin.version>
+        <maven-failsafe-plugin.version>3.0.0-M4</maven-failsafe-plugin.version>
+        <maven-surefire-plugin.version>3.0.0-M5</maven-surefire-plugin.version>
+        <maven-dependency-plugin.version>3.1.2</maven-dependency-plugin.version>
+        <required-maven.version>3.6.3</required-maven.version>
+        <sonar-maven-plugin.version>3.8.0.2131</sonar-maven-plugin.version>
+        <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
+        <openapi-generator-maven-plugin.version>5.0.1</openapi-generator-maven-plugin.version>
+
+        <!-- dependencies versions -->
+        <spring-boot.version>2.3.9.RELEASE</spring-boot.version>
+        <mysql-connector-java.version>8.0.22</mysql-connector-java.version>
+        <java-otp.version>0.2.0</java-otp.version>
+        <libphonenumber.version>8.12.15</libphonenumber.version>
+
+        <productionBranch>master</productionBranch>
+        <developmentBranch>develop</developmentBranch>
+    </properties>
+
+    <scm>
+        <connection>scm:git:git@github.com:backbase-alm-batatas/batatas-sme-flow-be.git</connection>
+        <developerConnection>scm:git:git@github.com:backbase-alm-batatas/batatas-sme-flow-be.git</developerConnection>
+        <url>scm:git:git@github.com:backbase-alm-batatas/batatas-sme-flow-be.git</url>
+        <tag>HEAD</tag>
+    </scm>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.backbase.flow</groupId>
+                <artifactId>flow-platform-dependencies</artifactId>
+                <version>${backbase-flow-platforms-dependencies.version}</version>
+                <scope>import</scope>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>com.backbase.flow</groupId>
+                <artifactId>journey-catalog-release-bom</artifactId>
+                <version>${journey-catalog-release-bom.version}</version>
+                <scope>import</scope>
+                <type>pom</type>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <profiles>
+        <profile>
+            <id>clean-database</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>sql-maven-plugin</artifactId>
+                        <version>${sql-maven-plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>clean-db</id>
+                                <phase>clean</phase>
+                                <goals>
+                                    <goal>execute</goal>
+                                </goals>
+                                <configuration>
+                                    <driver>com.mysql.jdbc.Driver</driver>
+                                    <url>jdbc:mysql://localhost:3306?useSSL=false</url>
+                                    <username>root</username>
+                                    <password>root</password>
+                                    <printResultSet>true</printResultSet>
+                                    <forceMojoExecution>true</forceMojoExecution>
+                                    <sqlCommand>
+                                        DROP DATABASE IF EXISTS flow;
+                                        CREATE DATABASE flow;
+                                    </sqlCommand>
+                                </configuration>
+                            </execution>
+                        </executions>
+                        <dependencies>
+                            <dependency>
+                                <groupId>mysql</groupId>
+                                <artifactId>mysql-connector-java</artifactId>
+                                <version>${mysql-connector-java.version}</version>
+                            </dependency>
+                        </dependencies>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <profile>
+            <id>docker</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.google.cloud.tools</groupId>
+                        <artifactId>jib-maven-plugin</artifactId>
+                        <version>${jib-maven-plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>build</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <from>
+                                <image>gcr.io/distroless/java:11</image>
+                            </from>
+                            <to>
+                                <image>${docker.image.name}</image>
+                                <!-- Authenticate here or using settings.xml or using command line -->
+                                <!-- https://github.com/GoogleContainerTools/jib/tree/master/jib-maven-plugin#authentication-methods-->
+                                <!-- <auth>... -->
+                                <tags>
+                                    <tag>${project.version}</tag>
+                                </tags>
+                            </to>
+                            <container>
+                                <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
+                                <ports>
+                                    <port>8080</port>
+                                </ports>
+                                <labels>
+                                    <Author>Flow Helium Team</Author>
+                                    <backbase-onboarding-batatas-version>${project.version}</backbase-onboarding-batatas-version>
+                                </labels>
+                            </container>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
+    <dependencies>
+
+        <!-- Flow platform -->
+        <dependency>
+            <groupId>com.backbase.flow.modules</groupId>
+            <artifactId>flow-journey-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.backbase.flow.modules</groupId>
+            <artifactId>flow-liquibase-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.backbase.flow.modules</groupId>
+            <artifactId>flow-comments-starter</artifactId>
+        </dependency>
+
+        <!-- Flow platform + DBS integration -->
+        <dependency>
+            <groupId>com.backbase.flow.modules</groupId>
+            <artifactId>flow-dbs-audit-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.backbase.flow.modules</groupId>
+            <artifactId>flow-dbs-access-control-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.backbase.dbs.accesscontrol</groupId>
+            <artifactId>auth-security-dbs-accesscontrol</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.backbase.flow.modules</groupId>
+            <artifactId>flow-iam-starter</artifactId>
+        </dependency>
+
+        <!-- database -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>${mysql-connector-java.version}</version>
+        </dependency>
+
+        <!-- Service Items and Integrations -->
+        <dependency>
+            <groupId>com.backbase.flow.journey.one-time-password</groupId>
+            <artifactId>integration-core-one-time-password</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.backbase.flow.journey.one-time-password</groupId>
+            <artifactId>service-item-one-time-password</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.backbase.flow.journey.address-validation</groupId>
+            <artifactId>integration-core-address-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.backbase.flow.journey.address-validation</groupId>
+            <artifactId>service-item-address-validation</artifactId>
+        </dependency>
+
+        <!-- code utils -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct-processor</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.eatthepath</groupId>
+            <artifactId>java-otp</artifactId>
+            <version>${java-otp.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.googlecode.libphonenumber</groupId>
+            <artifactId>libphonenumber</artifactId>
+            <version>${libphonenumber.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.module</groupId>
+            <artifactId>jackson-module-parameter-names</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jdk8</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <!-- test -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.vaadin.external.google</groupId>
+                    <artifactId>android-json</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- Identity dependencies -->
+        <dependency>
+            <groupId>com.backbase.identity</groupId>
+            <artifactId>identity-integration-spec</artifactId>
+            <version>${identity-integration-spec.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-maven-plugin</artifactId>
+            <version>${spring-boot.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>io.projectreactor.netty</groupId>
+            <artifactId>reactor-netty</artifactId>
+            <version>1.0.5</version>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/io.projectreactor/reactor-core -->
+        <dependency>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-core</artifactId>
+            <version>3.4.4</version>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>${maven-enforcer-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>enforce-maven</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireMavenVersion>
+                                    <version>${required-maven.version}</version>
+                                </requireMavenVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${maven-compiler-plugin.version}</version>
+                <configuration>
+                    <release>${java.version}</release>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>${spring-boot.version}</version>
+                <configuration>
+                    <environmentVariables>
+                        <SIG_SECRET_KEY>JWTSecretKeyDontUseInProduction!</SIG_SECRET_KEY>
+                    </environmentVariables>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>custom-build-info</id>
+                        <goals>
+                            <goal>build-info</goal>
+                        </goals>
+                        <configuration>
+                            <additionalProperties>
+                                <onboarding-service-us-version>${project.version}</onboarding-service-us-version>
+                                <flow-platforms-dep-version>${backbase-flow-platforms-dependencies.version}
+                                </flow-platforms-dep-version>
+                                <encoding.source>${project.build.sourceEncoding}</encoding.source>
+                                <java.version>${java.version}</java.version>
+                                <java.source>${maven.compiler.source}</java.source>
+                                <java.target>${maven.compiler.target}</java.target>
+                            </additionalProperties>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>runnable-jar</id>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                        <configuration>
+                            <executable>true</executable>
+                            <mainClass>com.backbase.flow.onboarding.batatas.Application</mainClass>
+                            <classifier>runnable</classifier>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.jsonschema2pojo</groupId>
+                <artifactId>jsonschema2pojo-maven-plugin</artifactId>
+                <version>${jsonschema2pojo.version}</version>
+                <executions>
+                    <execution>
+                        <id>case-data</id>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <sourceDirectory>${basedir}/src/main/resources/case-definitions</sourceDirectory>
+                            <targetPackage>${project.groupId}.casedata</targetPackage>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco-maven-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>pre-unit-test</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                        <configuration>
+                            <!-- Sets the path to the file which contains the execution data. -->
+                            <destFile>${coverage.reports.dir}/jacoco.exec</destFile>
+                            <propertyName>surefireArgLine</propertyName>
+                        </configuration>
+                    </execution>
+                    <!-- Ensures that the code coverage report for unit tests is created after unit tests have been run. -->
+                    <execution>
+                        <id>post-unit-test</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                        <configuration>
+                            <!-- Sets the output directory for the code coverage report. -->
+                            <dataFile>${coverage.reports.dir}/jacoco.exec</dataFile>
+                            <outputDirectory>${project.reporting.outputDirectory}/jacoco-ut</outputDirectory>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>pre-integration-test</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                        <configuration>
+                            <!-- Sets the path to the file which contains the execution data. -->
+                            <destFile>${coverage.reports.dir}/jacoco-it.exec</destFile>
+                            <propertyName>failsafeArgLine</propertyName>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>post-integration-test</id>
+                        <phase>post-integration-test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                        <configuration>
+                            <!-- Sets the output directory for the code coverage report. -->
+                            <dataFile>${coverage.reports.dir}/jacoco-it.exec</dataFile>
+                            <outputDirectory>${project.reporting.outputDirectory}/jacoco-it</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven-surefire-plugin.version}</version>
+                <configuration>
+                    <!--suppress UnresolvedMavenProperty -->
+                    <argLine>${surefireArgLine}</argLine>
+                    <!--suppress UnresolvedMavenProperty -->
+                    <skipTests>${skipTests}</skipTests>
+                    <excludes>
+                        <exclude>**/*IT.java</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>${maven-failsafe-plugin.version}</version>
+                <configuration>
+                    <useFile>false</useFile>
+                    <!--suppress UnresolvedMavenProperty -->
+                    <argLine>${failsafeArgLine}</argLine>
+                    <skipITs>${skipITs}</skipITs>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.sonarsource.scanner.maven</groupId>
+                <artifactId>sonar-maven-plugin</artifactId>
+                <version>${sonar-maven-plugin.version}</version>
+            </plugin>
+            <plugin>
+                <groupId>com.amashchenko.maven.plugin</groupId>
+                <artifactId>gitflow-maven-plugin</artifactId>
+                <version>${gitflow-maven-plugin.version}</version>
+                <configuration>
+                    <installProject>false</installProject>
+                    <verbose>false</verbose>
+
+                    <gitFlowConfig>
+                        <productionBranch>${productionBranch}</productionBranch>
+                        <developmentBranch>${developmentBranch}</developmentBranch>
+                        <featureBranchPrefix>feature/</featureBranchPrefix>
+                        <releaseBranchPrefix>release/</releaseBranchPrefix>
+                        <hotfixBranchPrefix>hotfix/</hotfixBranchPrefix>
+                        <versionTagPrefix>v</versionTagPrefix>
+                        <origin>origin</origin>
+                    </gitFlowConfig>
+                    <commitMessages>
+                        <!-- since 1.2.1, see Customizing commit messages -->
+
+                        <releaseStartMessage>Update versions for release @{version}</releaseStartMessage>
+                        <releaseFinishMessage>Update for next development version @{version}</releaseFinishMessage>
+                        <releaseVersionUpdateMessage>Update for next development version @{version}</releaseVersionUpdateMessage>
+
+                    </commitMessages>
+
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+                <version>${maven-release-plugin.version}</version>
+                <configuration>
+                    <tagNameFormat>v@{project.version}</tagNameFormat>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.openapitools</groupId>
+                <artifactId>openapi-generator-maven-plugin</artifactId>
+                <version>${openapi-generator-maven-plugin.version}</version>
+
+                <configuration>
+                    <generatorName>java</generatorName>
+                    <library>webclient</library>
+                    <generateSupportingFiles>true</generateSupportingFiles>
+                    <!--<strictSpec>true</strictSpec>-->
+                    <generateApiTests>false</generateApiTests>
+                    <generateModelTests>false</generateModelTests>
+                    <generateApiDocumentation>true</generateApiDocumentation>
+                    <configOptions>
+                        <dateLibrary>java8</dateLibrary>
+                        <serializationLibrary>jackson</serializationLibrary>
+<!--                        <hideGenerationTimestamp>true</hideGenerationTimestamp>-->
+                        <bigDecimalAsString>true</bigDecimalAsString>
+                        <sourceFolder>src/gen/java/main</sourceFolder>
+                        <serializableModel>true</serializableModel>
+                        <snapshotVersion>true</snapshotVersion>
+                    </configOptions>
+                </configuration>
+
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <id>sms</id>
+                        <configuration>
+                            <inputSpec>${project.basedir}/docs/api-specs/sms/sms-service_v02.yaml</inputSpec>
+                            <packageName>${project.groupId}.api.sms</packageName>
+                            <modelPackage>${project.groupId}.api.sms.model</modelPackage>
+                            <apiPackage>${project.groupId}.api.sms.client</apiPackage>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <id>batatas_bundled_services</id>
+                        <configuration>
+                            <inputSpec>${project.basedir}/docs/api-specs/batatas_bundled/batatas_bundled_v36.yaml</inputSpec>
+                            <packageName>${project.groupId}.api.batatas_bundled</packageName>
+                            <modelPackage>${project.groupId}.api.batatas_bundled.model</modelPackage>
+                            <apiPackage>${project.groupId}.api.batatas_bundled.client</apiPackage>
+                            <configOptions>
+                                <useAbstractionForFiles>true</useAbstractionForFiles>
+                            </configOptions>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <id>auth</id>
+                        <configuration>
+                            <library>resttemplate</library>
+                            <inputSpec>${project.basedir}/docs/api-specs/loqr/auth.yaml</inputSpec>
+                            <packageName>${project.groupId}.api.auth</packageName>
+                            <modelPackage>${project.groupId}.api.auth.model</modelPackage>
+                            <apiPackage>${project.groupId}.api.auth.client</apiPackage>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <id>verify</id>
+                        <configuration>
+                            <library>resttemplate</library>
+                            <!-- the swagger contract is custom because the contract in LOQR is out of date with what you receive in Response -->
+                            <inputSpec>${project.basedir}/docs/api-specs/loqr/verifyCustom.yaml</inputSpec>
+                            <packageName>${project.groupId}.api.verify</packageName>
+                            <modelPackage>${project.groupId}.api.verify.model</modelPackage>
+                            <apiPackage>${project.groupId}.api.verify.client</apiPackage>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <id>intApi</id>
+                        <configuration>
+                            <library>resttemplate</library>
+                            <!-- the swagger contract is custom because the contract in LOQR is out of date with what you receive in Response -->
+                            <inputSpec>${project.basedir}/docs/api-specs/loqr/intapiCustom.yaml</inputSpec>
+                            <packageName>${project.groupId}.api.intapi</packageName>
+                            <modelPackage>${project.groupId}.api.intapi.model</modelPackage>
+                            <apiPackage>${project.groupId}.api.intapi.client</apiPackage>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+        </plugins>
+    </build>
+
+</project>
