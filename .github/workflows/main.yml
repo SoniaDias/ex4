@@ -29,7 +29,7 @@ jobs:
       # Runs a single command using the runners shell
       - name: Run a one-line script
         #run: echo ${{ secrets.CHECKMARX_USERNAME }}
-        run: .\runCxConsole.cmd GenerateToken -v -CxUser admin@cx -CxPassword Password123@456 -CxServer http://win-hc21vf6uii0/
+        run: pwsh -command ".\$GITHUB_WORKSPACE\ps_script.ps1"
 
       # Runs a set of commands using the runners shell
       - name: Run a multi-line script
