@@ -25,11 +25,6 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
-
-      #- uses: actions/github-script@v3
       - name: Get result
-        #run: "& {C:\Users\Administrator\Downloads\CxConsolePlugin-2021.1.1\runCxConsole.cmd asyncscan -v -cxserver http://checkmarkx.redshift.local -projectname CxServer\WebGoat-7.0.1 -CxToken 7a83a8f102349b0531745f81af133b99567a8827c2cb9930e3100edf7247dc9e -locationtype folder -locationpath C:\Checkmarx\CxFlow\actions-runner\actions-runner-win-x64-2.277.1\_work\WebGoat\WebGoat}"
-        #run: cmd /c "powershell.exe C:\\Checkmarx\\CxUtils\\Redshift\\runScan.ps1"
-        #run: echo "${{steps.set-result.outputs.result}}"
         run: C:\actions-runner\ps_script.ps1
 
