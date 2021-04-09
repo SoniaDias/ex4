@@ -26,36 +26,14 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
 
-      - uses: Amadevus/pwsh-script@v2
-        id: script
+      - uses: actions/github-script@v3
+        id: set-result
         with:
-          script: |
-            Write-ActionDebug "Visible only when ACTIONS_STEP_DEBUG secret is set"
+          script: return "Hello!"
+          result-encoding: string
+      - name: Get result
+        #run: "& {C:\Users\Administrator\Downloads\CxConsolePlugin-2021.1.1\runCxConsole.cmd asyncscan -v -cxserver http://checkmarkx.redshift.local -projectname CxServer\WebGoat-7.0.1 -CxToken 7a83a8f102349b0531745f81af133b99567a8827c2cb9930e3100edf7247dc9e -locationtype folder -locationpath C:\Checkmarx\CxFlow\actions-runner\actions-runner-win-x64-2.277.1\_work\WebGoat\WebGoat}"
+        #run: cmd /c "powershell.exe C:\\Checkmarx\\CxUtils\\Redshift\\runScan.ps1"
+        #run: echo "${{steps.set-result.outputs.result}}"
+        run: C:\actions-runner\ps_script.ps1
 
-            # access full context objects:
-            if ($github.event.repository.full_name -ne $github.repository) {
-              # throwing causes the step to fail
-              throw "something fishy's going on, repos don't match"
-            }
-
-            $someData = Get-MyCustomData
-            # data may contain workflow command strings (e.g. '::warning::...')
-            # prevent runner interpreting these
-            Invoke-ActionNoCommandsBlock -GenerateToken {
-              # this won't result in any workflow commands
-              Write-Host $someData
-              Write-ActionError "not interpreted as error"
-            }
-            # commands work again
-
-            # set env:BE_AWESOME=always here and for the following steps
-            Set-ActionVariable BE_AWESOME always
-
-            # add our custom tool to PATH for the following steps:
-            $toolPath = Resolve-Path ./tools/bin
-            Add-ActionPath $toolPath
-
-            # warn if it's too late for people to work in Greenwich ;)
-            if ([datetime]::UtcNow.Hour -ge 22) {
-              Write-ActionWarning "It's time to go to bed. Don't write code late at night! ⚠"
-            }
